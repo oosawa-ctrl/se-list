@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配信SEリスト</title>
+    <style>
+        body { font-family: sans-serif; background-color: #1a1a1a; color: #fff; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        
+        /* 検索窓 */
+        .search-box { width: 100%; padding: 15px; font-size: 16px; margin-bottom: 20px; border-radius: 8px; border: none; box-sizing: border-box;}
+        
+        /* カテゴリタブ */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+        .tab { padding: 8px 16px; background: #333; border-radius: 20px; cursor: pointer; user-select: none; }
+        .tab.active { background: #007bff; font-weight: bold; }
+        
+        /* リスト */
+        .se-item { background: #2d2d2d; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .se-name { font-weight: bold; font-size: 1.1em; }
+        .se-cmd { color: #888; font-size: 0.8em; margin-top: 4px; }
+        
+        /* コピーボタン */
+        .copy-btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
+        .copy-btn:active { transform: scale(0.95); }
+        .copy-btn.copied { background: #28a745; }
+        
+        /* 通知 */
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 16px; box-shadow: 0px 4px 10px rgba(0,0,0,0.5); }
+        #toast.show { visibility: visible; -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+        
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔊 配信SEリスト</h2>
+    <input type="text" id="searchInput" class="search-box" placeholder="キーワードで検索...">
+    
+    <div class="tabs" id="categoryTabs">
+        <div class="tab active" onclick="filterCategory('all')">すべて</div>
+        </div>
+
+    <div id="listContainer"></div>
+</div>
+
+<div id="toast">コピーしました！</div>
+
+<script>
+    // ▼ここにSEデータを追加してください▼
+    const seList = [
+        { name: "だが断る", cmd: "だが断る", category: "ジョジョ" },
+        { name: "貧弱貧弱ゥ", cmd: "貧弱貧弱ゥ", category: "ジョジョ" },
+        { name: "アリーヴェデルチ", cmd: "アリーヴェデルチ", category: "ジョジョ" },
+        { name: "おろろ", cmd: "おろろ", category: "るろうに剣心" },
+        { name: "飛天御剣流", cmd: "飛天御剣流", category: "るろうに剣心" },
+        { name: "人の夢は終わらねェ", cmd: "人の夢は終わらねェ", category: "ワンピース" },
+        { name: "愛してくれてありがとう", cmd: "愛してくれてありがとう", category: "ワンピース" },
+        // { name: "表示名", cmd: "読み上げテキスト", category: "カテゴリ名" }, ←この形式で増やせます
+    ];
+
+    const listContainer = document.getElementById('listContainer');
+    const tabsContainer = document.getElementById('categoryTabs');
+    let currentCategory = 'all';
+
+    // 初期化処理
+    function init() {
+        renderTabs();
+        renderList(seList);
+        
+        // 検索機能
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const keyword = e.target.value.toLowerCase();
+            const filtered = seList.filter(item => 
+                (item.name.toLowerCase().includes(keyword) || item.cmd.toLowerCase().includes(keyword)) &&
+                (currentCategory === 'all' || item.category === currentCategory)
+            );
+            renderList(filtered);
+        });
+    }
+
+    // タブの生成
+    function renderTabs() {
+        const categories = [...new Set(seList.map(item => item.category))];
+        categories.forEach(cat => {
+            const div = document.createElement('div');
+            div.className = 'tab';
+            div.innerText = cat;
+            div.onclick = () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                div.classList.add('active');
+                currentCategory = cat;
+                document.getElementById('searchInput').dispatchEvent(new Event('input'));
+            };
+            tabsContainer.appendChild(div);
+        });
+    }
+
+    // リストの描画
+    function renderList(items) {
+        listContainer.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'se-item';
+            div.innerHTML = `
+                <div>
+                    <div class="se-name">${item.name}</div>
+                    <div class="se-cmd">${item.cmd}</div>
+                </div>
+                <button class="copy-btn" onclick="copyText('${item.cmd}', this)">コピー</button>
+            `;
+            listContainer.appendChild(div);
+        });
+    }
+
+    // コピー機能
+    function copyText(text, btn) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast();
+            btn.innerText = '完了';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerText = 'コピー';
+                btn.classList.remove('copied');
+            }, 2000);
+        });
+    }
+
+    // トースト通知
+    function showToast() {
+        const x = document.getElementById("toast");
+        x.className = "show";
+        setTimeout(() => { x.className = x.className.replace("show", ""); }, 3000);
+    }
+
+    init();
+</script>
+
+</body>
+</html>
