@@ -81,36 +81,26 @@
         });
     }
 
-    // タブの生成（修正箇所：すべてボタンもここで作ります）
+    // タブの生成
     function renderTabs() {
-        tabsContainer.innerHTML = ''; // 既存のタブをリセット
-
-        // カテゴリのリストを作成
+        tabsContainer.innerHTML = '';
         const categories = ['all', ...new Set(seList.map(item => item.category))];
 
         categories.forEach(cat => {
             const div = document.createElement('div');
             div.className = (cat === currentCategory) ? 'tab active' : 'tab';
-            
-            // "all" の場合は日本語で「すべて」と表示
             div.innerText = (cat === 'all') ? 'すべて' : cat;
-            
             div.onclick = () => {
-                // クリック時の動作
                 currentCategory = cat;
-                
-                // 見た目の更新
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 div.classList.add('active');
-                
-                // 検索（絞り込み）を実行
                 document.getElementById('searchInput').dispatchEvent(new Event('input'));
             };
             tabsContainer.appendChild(div);
         });
     }
 
-    // リストの描画
+    // リストの描画（ここを修正しました）
     function renderList(items) {
         listContainer.innerHTML = '';
         if (items.length === 0) {
@@ -123,8 +113,7 @@
             div.innerHTML = `
                 <div>
                     <div class="se-name">${item.name}</div>
-                    <div class="se-cmd">${item.cmd}</div>
-                </div>
+                    </div>
                 <button class="copy-btn" onclick="copyText('${item.cmd}', this)">コピー</button>
             `;
             listContainer.appendChild(div);
@@ -159,4 +148,5 @@
 </body>
 
 </html>
+
 
