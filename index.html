@@ -124,6 +124,34 @@
             align-items: center;
         }
         .open-filter-btn::after { content: '▼'; font-size: 0.8em; color: #888; }
+
+        /* ボタンを横並びにするエリア */
+        .control-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* 既存のカテゴリボタンの調整（余白を削除して親に任せる） */
+        .open-filter-btn {
+            margin-bottom: 0; /* これ重要：以前の20pxを消す */
+            flex-grow: 1;     /* 横幅いっぱいに広がる */
+        }
+
+        /* ランダムボタンのスタイル */
+        .random-btn {
+            background: #e67e22; /* オレンジ色 */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0 20px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            white-space: nowrap; /* 文字を折り返さない */
+        }
+        .random-btn:active { transform: scale(0.95); }
+        
     </style>
 </head>
 <body>
@@ -132,7 +160,10 @@
     <h2>🔊 配信SEリスト</h2>
     <input type="text" id="searchInput" class="search-box" placeholder="キーワードで検索...">
     
-    <button id="openFilterBtn" class="open-filter-btn">カテゴリを選択...</button>
+    <div class="control-bar">
+        <button id="openFilterBtn" class="open-filter-btn">カテゴリを選択...</button>
+        <button id="randomBtn" class="random-btn">🎲 ランダム</button>
+    </div>
 
     <div id="categoryModal" class="modal-overlay">
         <div class="modal-content">
@@ -298,30 +329,47 @@
         // ...他も同様
     ];
 
+// ▼▼▼ seListより下の行を、すべてこれに書き換えてください ▼▼▼
 
     const listContainer = document.getElementById('listContainer');
     const modalGrid = document.getElementById('modalGrid');
     const openFilterBtn = document.getElementById('openFilterBtn');
+    const randomBtn = document.getElementById('randomBtn'); // 新機能
     const modal = document.getElementById('categoryModal');
     let currentCategory = 'all';
 
     function init() {
         renderModalButtons();
-        renderList(seList);
+        renderList(seList); // 最初は全表示
 
-        // 検索窓の動作
+        // 検索機能
         document.getElementById('searchInput').addEventListener('input', runFilter);
         
-        // モーダルを開く
+        // モーダル操作
         openFilterBtn.onclick = () => toggleModal(true);
-        
-        // モーダルの黒い部分を押したら閉じる
-        modal.onclick = (e) => {
-            if (e.target === modal) toggleModal(false);
+        modal.onclick = (e) => { if (e.target === modal) toggleModal(false); };
+
+        // ★ランダム機能の実装
+        randomBtn.onclick = () => {
+            // 1. カテゴリ表示をリセット
+            currentCategory = 'all';
+            openFilterBtn.innerText = 'カテゴリを選択...';
+            document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('current'));
+            document.getElementById('searchInput').value = ''; // 検索窓もクリア
+
+            // 2. 全リストをシャッフルして10個取り出す
+            const shuffled = [...seList].sort(() => 0.5 - Math.random());
+            const random10 = shuffled.slice(0, 10);
+
+            // 3. 表示
+            renderList(random10);
+            
+            // (オプション) ランダム表示中であることを通知したい場合
+            // listContainer.insertAdjacentHTML('afterbegin', '<div style="color:#e67e22; margin-bottom:10px; font-weight:bold;">🎲 ランダムに10個表示中</div>');
         };
     }
 
-    // フィルタ実行（共通処理）
+    // フィルタ実行
     function runFilter() {
         const keyword = document.getElementById('searchInput').value.toLowerCase();
         const filtered = seList.filter(item => 
@@ -331,43 +379,33 @@
         renderList(filtered);
     }
 
-    // モーダルの開閉
+    // モーダル開閉
     function toggleModal(show) {
-        if (show) {
-            modal.classList.add('active');
-        } else {
-            modal.classList.remove('active');
-        }
+        if (show) modal.classList.add('active');
+        else modal.classList.remove('active');
     }
 
-    // モーダル内のボタン生成
+    // モーダル内ボタン生成
     function renderModalButtons() {
         modalGrid.innerHTML = '';
         const categories = ['all', ...new Set(seList.map(item => item.category))];
-
         categories.forEach(cat => {
             const div = document.createElement('div');
             div.className = (cat === currentCategory) ? 'cat-btn current' : 'cat-btn';
             div.innerText = (cat === 'all') ? 'すべて表示' : cat;
-            
             div.onclick = () => {
                 currentCategory = cat;
-                
-                // ボタンの見た目更新
                 document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('current'));
                 div.classList.add('current');
-                
-                // 親画面のボタン文字も変える
                 openFilterBtn.innerText = (cat === 'all') ? 'カテゴリを選択...' : `カテゴリ: ${cat}`;
-                
-                toggleModal(false); // 閉じる
-                runFilter(); // 絞り込み実行
+                toggleModal(false);
+                runFilter();
             };
             modalGrid.appendChild(div);
         });
     }
 
-    // リスト描画（画像対応版）
+    // リスト描画
     function renderList(items) {
         listContainer.innerHTML = '';
         if (items.length === 0) {
@@ -378,7 +416,6 @@
             const div = document.createElement('div');
             div.className = 'se-item';
             
-            // 画像がある場合のみimgタグを作る（ここも忘れず画像対応にしておきました）
             const imgHtml = item.image ? `<img src="${item.image}" class="se-icon">` : '';
 
             div.innerHTML = `
@@ -418,6 +455,7 @@
 </body>
 
 </html>
+
 
 
 
