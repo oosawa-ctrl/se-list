@@ -47,6 +47,83 @@
             display: flex;
             align-items: center;
         }
+
+        /* モーダル（ポップアップ）のスタイル */
+        .modal-overlay {
+            display: none; /* 普段は隠す */
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); /* 背景を暗く */
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; } /* アクティブ時に表示 */
+
+        .modal-content {
+            background: #2d2d2d;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh; /* 画面の8割の高さまで */
+            border-radius: 12px;
+            overflow-y: auto; /* メニュー自体が長ければスクロール */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .close-modal-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* モーダル内のカテゴリボタン */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); /* 自動でタイル状に */
+            gap: 10px;
+        }
+
+        .cat-btn {
+            background: #444;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+        .cat-btn:active { background: #666; }
+        .cat-btn.current { background: #007bff; font-weight: bold; }
+
+        /* 呼び出しボタン */
+        .open-filter-btn {
+            width: 100%;
+            padding: 12px;
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .open-filter-btn::after { content: '▼'; font-size: 0.8em; color: #888; }
     </style>
 </head>
 <body>
@@ -55,9 +132,18 @@
     <h2>🔊 配信SEリスト</h2>
     <input type="text" id="searchInput" class="search-box" placeholder="キーワードで検索...">
     
-    <div class="tabs" id="categoryTabs">
-        <div class="tab active" onclick="filterCategory('all')">すべて</div>
+    <button id="openFilterBtn" class="open-filter-btn">カテゴリを選択...</button>
+
+    <div id="categoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="margin:0">カテゴリ一覧</h3>
+                <button class="close-modal-btn" onclick="toggleModal(false)">×</button>
+            </div>
+            <div id="modalGrid" class="category-grid">
+            </div>
         </div>
+    </div>
 
     <div id="listContainer"></div>
 </div>
@@ -212,38 +298,72 @@
         // ...他も同様
     ];
 
+
     const listContainer = document.getElementById('listContainer');
-    const tabsContainer = document.getElementById('categoryTabs');
+    const modalGrid = document.getElementById('modalGrid');
+    const openFilterBtn = document.getElementById('openFilterBtn');
+    const modal = document.getElementById('categoryModal');
     let currentCategory = 'all';
 
     function init() {
-        renderTabs();
+        renderModalButtons();
         renderList(seList);
+
+        // 検索窓の動作
+        document.getElementById('searchInput').addEventListener('input', runFilter);
         
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const keyword = e.target.value.toLowerCase();
-            const filtered = seList.filter(item => 
-                (item.name.toLowerCase().includes(keyword) || item.cmd.toLowerCase().includes(keyword)) &&
-                (currentCategory === 'all' || item.category === currentCategory)
-            );
-            renderList(filtered);
-        });
+        // モーダルを開く
+        openFilterBtn.onclick = () => toggleModal(true);
+        
+        // モーダルの黒い部分を押したら閉じる
+        modal.onclick = (e) => {
+            if (e.target === modal) toggleModal(false);
+        };
     }
 
-    function renderTabs() {
-        tabsContainer.innerHTML = '';
+    // フィルタ実行（共通処理）
+    function runFilter() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        const filtered = seList.filter(item => 
+            (item.name.toLowerCase().includes(keyword) || item.cmd.toLowerCase().includes(keyword)) &&
+            (currentCategory === 'all' || item.category === currentCategory)
+        );
+        renderList(filtered);
+    }
+
+    // モーダルの開閉
+    function toggleModal(show) {
+        if (show) {
+            modal.classList.add('active');
+        } else {
+            modal.classList.remove('active');
+        }
+    }
+
+    // モーダル内のボタン生成
+    function renderModalButtons() {
+        modalGrid.innerHTML = '';
         const categories = ['all', ...new Set(seList.map(item => item.category))];
+
         categories.forEach(cat => {
             const div = document.createElement('div');
-            div.className = (cat === currentCategory) ? 'tab active' : 'tab';
-            div.innerText = (cat === 'all') ? 'すべて' : cat;
+            div.className = (cat === currentCategory) ? 'cat-btn current' : 'cat-btn';
+            div.innerText = (cat === 'all') ? 'すべて表示' : cat;
+            
             div.onclick = () => {
                 currentCategory = cat;
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                div.classList.add('active');
-                document.getElementById('searchInput').dispatchEvent(new Event('input'));
+                
+                // ボタンの見た目更新
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('current'));
+                div.classList.add('current');
+                
+                // 親画面のボタン文字も変える
+                openFilterBtn.innerText = (cat === 'all') ? 'カテゴリを選択...' : `カテゴリ: ${cat}`;
+                
+                toggleModal(false); // 閉じる
+                runFilter(); // 絞り込み実行
             };
-            tabsContainer.appendChild(div);
+            modalGrid.appendChild(div);
         });
     }
 
@@ -258,7 +378,7 @@
             const div = document.createElement('div');
             div.className = 'se-item';
             
-            // 画像がある場合のみimgタグを作る
+            // 画像がある場合のみimgタグを作る（ここも忘れず画像対応にしておきました）
             const imgHtml = item.image ? `<img src="${item.image}" class="se-icon">` : '';
 
             div.innerHTML = `
@@ -298,6 +418,7 @@
 </body>
 
 </html>
+
 
 
 
